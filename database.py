@@ -21,8 +21,38 @@ def init_db():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sleep (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL UNIQUE,
+            status TEXT NOT NULL,
+            time TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     conn.commit()
     conn.close()
+
+
+def save_sleep(date_str: str, status: str, time_str: str):
+    conn = get_conn()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO sleep (date, status, time) VALUES (?, ?, ?)",
+            (date_str, status, time_str),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_today_sleep(date_str: str):
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT status FROM sleep WHERE date = ?", (date_str,)
+    ).fetchone()
+    conn.close()
+    return row["status"] if row else None
 
 
 def save_response(date_str: str, status: str, time_str: str):

@@ -3,3 +3,6 @@ __pycache__/
 wake_up.db
 *.pyc
 .env
+jawa.txt
+config.py
+NOTES.md

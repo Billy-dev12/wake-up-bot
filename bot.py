@@ -194,6 +194,13 @@ async def send_sleep_reminder(context: ContextTypes.DEFAULT_TYPE, chat_id: int):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+    # Schedule auto check kalau ga respon dalam TIMEOUT_MINUTES
+    context.job_queue.run_once(
+        check_sleep_no_response,
+        TIMEOUT_MINUTES * 60,
+        data=chat_id,
+    )
+
     await context.bot.send_message(
         chat_id=chat_id,
         text="🌙 Sudah jam 8 malam nih!\n\nWaktunya mulai ngeredupin layar & persiapin tidur ya.\nKlik tombol di bawah:",
@@ -248,16 +255,54 @@ async def sleep_button_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     query = update.callback_query
     await query.answer()
 
+    now = datetime.now(tz)
+    date_str = now.strftime("%Y-%m-%d")
+    time_str = now.strftime("%H:%M:%S")
     data = query.data  # "sudah_tidur" atau "belum_tidur"
 
+    # Cek udah kejawab/ke-auto-save belum hari ini
+    existing = db.get_today_sleep(date_str)
+    if existing:
+        status_text = "Sudah tidur 😴" if existing == "sudah_tidur" else "Belum tidur 😅"
+        await query.edit_message_text(
+            f"Kamu udah jawab hari ini: {status_text}\n"
+            f"Waktu jawab: {time_str}"
+        )
+        return
+
     if data == "sudah_tidur":
+        db.save_sleep(date_str, "sudah_tidur", time_str)
         await query.edit_message_text(
             "😴 Mantap! Tidur cukup biar besok fresh bangun subuh.\n\nSelamat malam & sweet dreams! 🌙"
         )
     else:
+        db.save_sleep(date_str, "belum_tidur", time_str)
         await query.edit_message_text(
             "😅 Yaudah, tapi coba mulai ngeredupin layar HP ya.\nMata butuh istirahat biar besok ga ngantuk banget.\n\nSemoga cepet tidur! 🌙"
         )
+
+
+# ──────────────────────────────────────────────
+# Cek kalo ga respon sleep reminder → auto "sudah_tidur"
+# ──────────────────────────────────────────────
+async def check_sleep_no_response(context: ContextTypes.DEFAULT_TYPE):
+    now = datetime.now(tz)
+    date_str = now.strftime("%Y-%m-%d")
+    time_str = now.strftime("%H:%M:%S")
+
+    existing = db.get_today_sleep(date_str)
+    if existing:
+        # Udah kejawab/ke-save, skip
+        return
+
+    # Belum bayar → auto "sudah_tidur"
+    db.save_sleep(date_str, "sudah_tidur", time_str)
+
+    await context.bot.send_message(
+        chat_id=context.job.data,
+        text=f"🤫 Ga ada respon dalam {TIMEOUT_MINUTES} menit, kuanggap kamu udah tidur deh.\n\nSelamat malam, tidur yang cukup! 🌙",
+    )
+    logger.debug(f"No sleep response for {date_str}, auto-marked as sudah_tidur")
 
 
 # ──────────────────────────────────────────────
