@@ -1,0 +1,24 @@
+[Unit]
+Description=Wake-Up Bot Telegram
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mcpe
+Group=mcpe
+WorkingDirectory=/home/mcpe/Scadule/wake-up-bot
+# Ganti path python kalo venv kamu beda lokasi
+ExecStart=/home/mcpe/Scadule/wake-up-bot/venv/bin/python /home/mcpe/Scadule/wake-up-bot/bot.py
+Restart=always
+RestartSec=5
+
+# Environment (opsional, kalau config kamu pake env variable)
+# Environment=BOT_TOKEN=xxx
+# Environment=CHAT_ID=xxx
+# Environment=OPENROUTER_API_KEY=xxx
+# Environment=AI_MODEL=xxx
+# Environment=TIMEZONE=Asia/Jakarta
+
+[Install]
+WantedBy=multi-user.target
